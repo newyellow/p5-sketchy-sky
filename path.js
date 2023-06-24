@@ -120,7 +120,7 @@ async function getCircleQueue(_pathPoints, _minSize = 10, _maxSize = 60) {
         counter++;
         nowSteps++;
 
-        if (counter % 10 == 0)
+        if (counter % 100 == 0)
             await sleep(1);
     }
 
@@ -192,7 +192,7 @@ async function getCircleWalkPath(_circles, _walkSpeed = 1) {
             }
         }
 
-        if (counter++ % 6 == 0)
+        if (counter++ % 100 == 0)
             await sleep(1);
     }
 
@@ -214,8 +214,8 @@ async function getNoisePath(_x1, _y1, _x2, _y2, _noiseScale, _wavingHeight) {
         let wavingHeight = _wavingHeight * noiseValue;
 
         let wavingDir = walkDir + 90;
-        let wavingX = nowX + sin(radians(wavingDir)) * wavingHeight;
-        let wavingY = nowY - cos(radians(wavingDir)) * wavingHeight;
+        let wavingX = nowX + sin(radians(wavingDir)) * wavingHeight - 0.5 * wavingHeight;
+        let wavingY = nowY - cos(radians(wavingDir)) * wavingHeight - 0.5 * wavingHeight;
 
         if (SHOW_PATH) {
             fill('white');
@@ -224,7 +224,7 @@ async function getNoisePath(_x1, _y1, _x2, _y2, _noiseScale, _wavingHeight) {
         }
         pathPoints.push({ x: wavingX, y: wavingY });
 
-        if (i % 10 == 0)
+        if (i % 100 == 0)
             await sleep(1);
     }
 
