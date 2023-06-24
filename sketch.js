@@ -21,7 +21,7 @@ async function setup() {
 
 
   // background
-  let padding = 30;
+  let padding = 0.06 * min(width, height);
 
   dotDensity = random(0.5, 0.8);
   lineDensity = random(0.06, 0.2);
@@ -29,10 +29,16 @@ async function setup() {
   dotSize = [1, 3];
   await NYRect(padding, padding, width - padding * 2, height - padding * 2);
 
+  // draw up frame
+  dotSize = [0, 6];
+  NYLine(padding, padding, width - padding, padding);
+
+  dotSize = [1, 3];
+
   // make paths
   let paths = [];
-  let pathCount = floor(random(3, 8));
-  let pathDist = (height * 0.4) / pathCount;
+  let pathCount = floor(random(6, 18));
+  let pathDist = (height * 0.6) / pathCount;
 
   for (let i = 0; i < pathCount; i++) {
     let x1 = -padding;
@@ -73,13 +79,18 @@ async function setup() {
       stroke(240);
       line(x1, y1, x2, y2);
 
-      if (i % 20 == 0)
+      if (i % 100 == 0)
         await sleep(1);
     }
 
     // draw cloud path
     let shadeNX = random(-1000, 1000);
-    let shadeNScale = 0.03;
+    let shadeNScale = random(0.003, 0.02);
+    let shadeChance = random(0.6, 0.8);
+
+    if (p == 0)
+      shadeChance = 1;
+
     for (let i = 0; i < nowPath.length; i++) {
       let x1 = nowPath[i].x;
       let y1 = nowPath[i].y;
@@ -90,8 +101,8 @@ async function setup() {
       shadeNX += shadeNScale;
       let shadeNoise = noise(shadeNX);
 
-      if (shadeNoise < 0.6) {
-        let shadeT = map(shadeNoise, 0, 0.6, 1, 0);
+      if (shadeNoise < shadeChance) {
+        let shadeT = map(shadeNoise, 0, shadeChance, 1, 0);
         let shadeScaler = 1.0;
 
         if (shadeT < 0.2)
@@ -106,21 +117,62 @@ async function setup() {
           await sleep(1);
       }
     }
+
+    // draw cloud shade
+    let cloudPadding = random(60, 200);
+    let cloudPaddingNX = random(-1000, 1000);
+    let cloudPaddingNScale = 0.03;
+    // let cloudLineSpacing = floor(random(6, 18));
+    let cloudLineSpacing = floor(1.0 / lineDensity);
+
+    if (p == paths.length - 1)
+      break;
+
+    for (let i = 0; i < nowPath.length; i++) {
+
+      let x1 = nowPath[i].x;
+      let y1 = nowPath[i].y;
+
+      let x2 = x1;
+      let y2 = height - padding;
+
+      if (floor(x1) % cloudLineSpacing != 0)
+        continue;
+
+      if (x1 < padding || x1 > width - padding)
+        continue;
+
+      cloudPaddingNX += cloudPaddingNScale;
+      let paddingNoise = noise(cloudPaddingNX);
+
+      y1 += cloudPadding * paddingNoise;
+      // y1 += random(10, 60);
+
+      if (random() < 0.9)
+        NYLine(x1, y1, x2, y2);
+
+      if (i % 200)
+        await sleep(1);
+
+    }
   }
-  return;
 
-  // try cloud shape
-  let startPath = await getNoisePath(-100, height / 2, width + 100, height / 2, 0.002, 300);
-  let startCirclesA = await getCircleQueue(startPath, 30, 240);
-  let startCirclePathA = await getCircleWalkPath(startCirclesA, 1);
+  // frame
+  dotSize = [0, 6];
+  NYLine(padding, padding, padding, height - padding);
+  NYLine(width - padding, padding, width - padding, height - padding);
+  NYLine(padding, height - padding, width - padding, height - padding);
 
-  let startCirclesB = await getCircleQueue(startCirclePathA, 10, 60);
-  let startCirclePathB = await getCircleWalkPath(startCirclesB, 1);
+  dotSize = [1, 3];
+
+
+  // draw last cloud white
+  let nowPath = cloudPaths[cloudPaths.length - 1];
 
   // fill cloud path
-  for (let i = 0; i < startCirclePathB.length; i++) {
-    let x1 = startCirclePathB[i].x;
-    let y1 = startCirclePathB[i].y;
+  for (let i = 0; i < nowPath.length; i++) {
+    let x1 = nowPath[i].x;
+    let y1 = nowPath[i].y;
 
     let x2 = x1;
     let y2 = height;
@@ -128,25 +180,77 @@ async function setup() {
     stroke(240);
     line(x1, y1, x2, y2);
 
-    if (i % 10 == 0)
+    if (i % 100 == 0)
       await sleep(1);
   }
 
   // draw cloud path
-  for (let i = 0; i < startCirclePathB.length; i++) {
-    let x1 = startCirclePathB[i].x;
-    let y1 = startCirclePathB[i].y;
+  let shadeNX = random(-1000, 1000);
+  let shadeNScale = random(0.003, 0.02);
+  let shadeChance = random(0.6, 0.8);
+
+  shadeChance = 1;
+
+  for (let i = 0; i < nowPath.length; i++) {
+    let x1 = nowPath[i].x;
+    let y1 = nowPath[i].y;
 
     if (x1 < padding || x1 > width - padding)
       continue;
 
-    noStroke();
-    MONDRIAN.setAlpha(255 * random(0.4, 0.8));
-    fill(MONDRIAN);
-    NoisePoint(x1, y1);
+    shadeNX += shadeNScale;
+    let shadeNoise = noise(shadeNX);
 
-    if (i % 10 == 0)
+    if (shadeNoise < shadeChance) {
+      let shadeT = map(shadeNoise, 0, shadeChance, 1, 0);
+      let shadeScaler = 1.0;
+
+      if (shadeT < 0.2)
+        shadeScaler = shadeT / 0.2;
+
+      noStroke();
+      MONDRIAN.setAlpha(255 * random(0.4, 0.8));
+      fill(MONDRIAN);
+      NoisePoint(x1, y1, shadeScaler);
+
+      if (i % 20 == 0)
+        await sleep(1);
+    }
+  }
+
+  // draw cloud shade
+  let cloudPadding = random(60, 200);
+  let cloudPaddingNX = random(-1000, 1000);
+  let cloudPaddingNScale = 0.03;
+  // let cloudLineSpacing = floor(random(6, 18));
+  let cloudLineSpacing = floor(1.0 / lineDensity);
+
+  for (let i = 0; i < nowPath.length; i++) {
+
+    let x1 = nowPath[i].x;
+    let y1 = nowPath[i].y;
+
+    let x2 = x1;
+    let y2 = height - padding;
+
+    if (floor(x1) % cloudLineSpacing != 0)
+      continue;
+
+    if (x1 < padding || x1 > width - padding)
+      continue;
+
+    cloudPaddingNX += cloudPaddingNScale;
+    let paddingNoise = noise(cloudPaddingNX);
+
+    y1 += cloudPadding * paddingNoise;
+    // y1 += random(10, 60);
+
+    if (random() < 0.9)
+      NYLine(x1, y1, x2, y2);
+
+    if (i % 200)
       await sleep(1);
+
   }
 }
 
