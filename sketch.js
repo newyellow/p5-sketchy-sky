@@ -9,25 +9,15 @@ let dotDensity = 0.6;
 let dotSize = [2, 4];
 
 async function setup() {
-  createCanvas(1000, 1000);
+  console.log(fxhash);
+  randomSeed(fxrand() * 20000);
+  noiseSeed(fxrand() * 20000);
+
+  await sleep(100);
+
+  createCanvas(800, 1000);
   colorMode(HSB);
   background(0, 0, 10);
-
-
-
-  blendMode(ADD);
-
-  // for(let i=0; i< 300; i++)
-  // {
-  //   let xPos = random(0.2, 0.8) * width;
-  //   let yPos = random(0.2, 0.8) * height;
-
-  //   let maxHeight = random(30, 80);
-  //   let length = random(100, 400);
-
-  //   noiseStroke(xPos, yPos, maxHeight, length);
-  //   await sleep(1);
-  // }
 
   let mainHue = 0;
 
@@ -40,6 +30,22 @@ async function setup() {
 
   let paths = [];
   let circleQueues = [];
+
+
+  let noisePath = await getNoisePath(0, height / 2, width, height / 2, 0.002, 600);
+
+  // background(0, 0, 10);
+  let lv1Circles = await getCircleQueue(noisePath, 30, 200);
+  let lv1CirclesPath = await getCircleWalkPath(lv1Circles, 1);
+
+  // background(0, 0, 10);
+  let lv2Circles = await getCircleQueue(lv1CirclesPath, 10, 60);
+  let lv2CirclesPath = await getCircleWalkPath(lv2Circles, 1);
+
+  let lv3Circles = await getCircleQueue(lv2CirclesPath, 5, 30);
+  let lv3CirclesPath = await getCircleWalkPath(lv3Circles, 1);
+  return;
+
 
   for (let p = 0; p < pathCount; p++) {
     paths[p] = [];
@@ -58,7 +64,7 @@ async function setup() {
     }
 
     // get circle queue
-    circleQueues[p] = getCircleQueue(paths[p], circleMinSize, circleMaxSize);
+    circleQueues[p] = await getCircleQueue(paths[p], circleMinSize, circleMaxSize);
     await sleep(10);
   }
 
@@ -86,139 +92,8 @@ async function setup() {
       }
     }
   }
-
-  // walking on the edge
-  for (let q = 0; q < circleQueues.length; q++) {
-
-    let circles = circleQueues[q];
-
-    // draw on the edge of circles
-    let nowCircleIndex = 0;
-    let nowWalkingAngle = -90;
-    let endWalkingAngle = circles[nowCircleIndex].getIntersectionAngle(circles[nowCircleIndex + 1])[0];
-    let angleStep = 1;
-    let walkX = circles[nowCircleIndex].x + sin(radians(nowWalkingAngle)) * circles[nowCircleIndex].radius;
-    let walkY = circles[nowCircleIndex].y - cos(radians(nowWalkingAngle)) * circles[nowCircleIndex].radius;
-
-    let counter = 0;
-
-    while (true) {
-      fill('white');
-      noStroke();
-      circle(walkX, walkY, 6);
-
-      nowWalkingAngle += angleStep;
-
-      let walkPoint = circles[nowCircleIndex].getSurfacePoint(nowWalkingAngle);
-      walkX = walkPoint.x;
-      walkY = walkPoint.y;
-
-      // walk on next cirlce
-      if (nowWalkingAngle >= endWalkingAngle) {
-        nowCircleIndex++;
-
-        if (nowCircleIndex == circles.length - 1) {
-          nowWalkingAngle = circles[nowCircleIndex].getPointAngle(walkX, walkY);
-
-          if (nowWalkingAngle > 180)
-            nowWalkingAngle -= 360;
-
-          endWalkingAngle = 90;
-        }
-        else if (nowCircleIndex == circles.length) {
-          break;
-        }
-        else {
-
-          nowWalkingAngle = circles[nowCircleIndex].getPointAngle(walkX, walkY);
-          if (nowWalkingAngle > 0)
-            nowWalkingAngle -= 360;
-
-          endWalkingAngle = circles[nowCircleIndex].getIntersectionAngle(circles[nowCircleIndex + 1])[0];
-        }
-      }
-
-      if (counter++ % 6 == 0)
-        await sleep(1);
-    }
-  }
 }
 
-function getCircleQueue(_pathPoints, _minSize = 10, _maxSize = 60) {
-
-  let resultCircles = [];
-
-  let pathIndex = 0;
-  let lastPoint = _pathPoints[0];
-  let nextPoint = _pathPoints[1];
-
-  // prepare next circle
-  let lastCircleSize = random(_minSize, _maxSize);
-  let nextCircleSize = random(_minSize, _maxSize);
-  let maxDist = lastCircleSize + nextCircleSize;
-  let minDist = max(lastCircleSize, nextCircleSize);
-  let nextCircleDist = lerp(minDist, maxDist, random(0.1, 0.9));
-
-  // add in first circle
-  let walkX = _pathPoints[0].x;
-  let walkY = _pathPoints[0].y;
-  let walkDir = getAngle(_pathPoints[0], _pathPoints[1]) + 90; // add 90 is global angle
-  resultCircles.push(new CircleData(_pathPoints[0].x, _pathPoints[0].y, lastCircleSize));
-
-  let lastCircleX = walkX;
-  let lastCircleY = walkY;
-
-  // walk and get circles
-  while (true) {
-    walkX += sin(radians(walkDir));
-    walkY -= cos(radians(walkDir));
-    // noStroke();
-    // fill('blue');
-    // circle(walkX, walkY, 2);
-
-    let distToLastCircle = dist(walkX, walkY, lastCircleX, lastCircleY);
-    let distToNextPathPoint = dist(walkX, walkY, nextPoint.x, nextPoint.y);
-
-    // arrive dest circle point
-    if (distToLastCircle >= nextCircleDist) {
-      resultCircles.push(new CircleData(walkX, walkY, nextCircleSize));
-
-      lastCircleX = walkX;
-      lastCircleY = walkY;
-
-      // noFill();
-      // stroke(random(0, 360), random(40, 60), random(80, 100));
-      // circle(walkX, walkY, nextCircleSize * 2);
-
-      // get next circle
-      lastCircleSize = nextCircleSize;
-      nextCircleSize = random(_minSize, _maxSize);
-
-      maxDist = lastCircleSize + nextCircleSize;
-      minDist = max(lastCircleSize, nextCircleSize);
-      nextCircleDist = lerp(minDist, maxDist, random(0.1, 0.9));
-    }
-
-    // arrive next path point
-    if (distToNextPathPoint <= 1) {
-      lastPoint = _pathPoints[pathIndex];
-
-      pathIndex++;
-      if (pathIndex >= _pathPoints.length) {
-        // add last circle
-        let endCircleX = lastCircleX + sin(radians(walkDir)) * nextCircleDist;
-        let endCircleY = lastCircleY - cos(radians(walkDir)) * nextCircleDist;
-        resultCircles.push(new CircleData(endCircleX, endCircleY, nextCircleSize));
-        break;
-      }
-
-      nextPoint = _pathPoints[pathIndex];
-      walkDir = getAngle(lastPoint, nextPoint) + 90;
-    }
-  }
-
-  return resultCircles;
-}
 
 function noiseStroke(_x, _y, _maxHeight, _length) {
 
@@ -280,6 +155,23 @@ function NYLine(_x1, _y1, _x2, _y2) {
 
     circle(xPos, yPos, nowDotSize);
   }
+}
+
+
+let pointNoiseX = 0;
+let pointNoiseY = 325;
+let pointNoiseScaleX = 0.003;
+let pointNoiseScaleY = 0.003;
+let pointNoiseRadius = 10;
+
+function NoisePoint(_x, _y) {
+  pointNoiseX += pointNoiseScaleX;
+  pointNoiseY += pointNoiseScaleY;
+
+  let offsetX = (noise(pointNoiseX) - 0.5) * 2 * pointNoiseRadius;
+  let offsetY = (noise(pointNoiseY) - 0.5) * 2 * pointNoiseRadius;
+
+  circle(_x + offsetX, _y + offsetY, 3);
 }
 
 function sleep(ms) {
